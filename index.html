@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Workouts">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#eef1f3">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<title>Recomp Workouts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: phone-first training log. Sticky day switcher, one card per exercise with a watch button on the right. */
+:root{
+  --bg:#eef1f3; --surface:#ffffff; --ink:#16202a; --muted:#5d6b78; --line:#d7dde2;
+  --accent:#d2491f; --accent-ink:#ffffff; --done:#2f7d5b; --chip:#e3e8ec;
+  --bg2:#f7f9fa; --fig:#16202a; --figfar:#97a3ae; --prop:#8794a0; --propfill:#e6ebef; --wt:#d2491f; --floor:#cfd7dd;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12171c; --surface:#1b2229; --ink:#e7ecf0; --muted:#97a4b0; --line:#2b343d;
+  --accent:#f0683c; --accent-ink:#14100e; --done:#5cc095; --chip:#252e37; --bg2:#151b21; --fig:#e7ecf0; --figfar:#6f7d8a; --prop:#6f7d8a; --propfill:#232c35; --wt:#f0683c; --floor:#33404b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12171c; --surface:#1b2229; --ink:#e7ecf0; --muted:#97a4b0; --line:#2b343d;
+  --accent:#f0683c; --accent-ink:#14100e; --done:#5cc095; --chip:#252e37; --bg2:#151b21; --fig:#e7ecf0; --figfar:#6f7d8a; --prop:#6f7d8a; --propfill:#232c35; --wt:#f0683c; --floor:#33404b; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.4}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 40px}
+
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px 10px;border-bottom:1px solid var(--line)}
+h1{font-family:var(--display);font-weight:700;font-size:1.6rem;letter-spacing:.02em;text-transform:uppercase;margin:0 0 8px}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.tabs button{font:600 .95rem/1 var(--display);letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:10px 0;cursor:pointer;min-width:0}
+.tabs button[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.tabs button:focus-visible,.watch:focus-visible,.check:focus-visible,.reset:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.dayhead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:18px 0 4px}
+h2{font-family:var(--display);font-weight:700;font-size:1.35rem;text-transform:uppercase;letter-spacing:.02em;margin:0;text-wrap:balance}
+.progress{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.sub{color:var(--muted);font-size:.9rem;margin:0 0 10px}
+.log{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.log input{width:58px;font:500 16px/1.2 var(--body);padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums;min-width:0}
+.log input::placeholder{color:var(--muted)}
+.log span{color:var(--muted);font-size:.85rem}
+.logbtn{font:600 .85rem/1 var(--body);background:var(--ink);color:var(--surface);border:0;border-radius:6px;padding:9px 12px;cursor:pointer}
+.logbtn:focus-visible,.log input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.last{font-size:.8rem;color:var(--muted);margin:4px 0 0;font-variant-numeric:tabular-nums}
+.last b{color:var(--ink);font-weight:600}
+.backup{margin-top:22px;padding-top:14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.bkbtns{display:flex;gap:8px;flex-wrap:wrap}
+label.reset{display:inline-flex;align-items:center}
+.bkmsg{margin:0;font-size:.85rem;color:var(--done);min-height:1.2em}
+.gnote{color:var(--muted);font-size:.86rem;margin:-2px 0 10px}
+.group{font:600 .78rem/1 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px}
+
+.list{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.ex{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px}
+.ex.is-done .name{text-decoration:line-through;text-decoration-color:var(--muted)}
+.ex.is-done{opacity:.72}
+.check{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);background:transparent;cursor:pointer;display:grid;place-items:center;padding:0}
+.check svg{width:14px;height:14px;opacity:0}
+.ex.is-done .check{background:var(--done);border-color:var(--done)}
+.ex.is-done .check svg{opacity:1}
+.info{min-width:0}
+.name{font-weight:600;font-size:1rem;margin:0}
+.dose{display:inline-block;margin-top:4px;font:600 .95rem/1.2 var(--display);letter-spacing:.03em;background:var(--chip);border-radius:5px;padding:3px 7px;font-variant-numeric:tabular-nums}
+.note{color:var(--muted);font-size:.86rem;margin:5px 0 0}
+.anim{width:104px;aspect-ratio:260/196;max-width:100%;border-radius:8px;background:var(--bg2);border:1px solid var(--line);cursor:zoom-in;display:block;padding:0}
+.anim svg{width:100%;height:100%;display:block}
+.anim.has-gif{background:#000;overflow:hidden}
+.anim img{width:100%;height:100%;object-fit:contain;display:block}
+.ex.big .anim.has-gif{aspect-ratio:auto;height:auto}
+.ex.big .anim.has-gif img{height:auto;max-height:70vh}
+.ex.big .anim{grid-column:1 / -1;grid-row:2;width:100%;cursor:zoom-out}
+.vid{display:inline-block;margin-top:6px;font-size:.82rem;color:var(--accent);font-weight:600}
+.watch{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:64px;height:56px;border-radius:9px;background:var(--accent);color:var(--accent-ink);text-decoration:none;font:600 .72rem/1 var(--body);letter-spacing:.06em;text-transform:uppercase}
+.watch svg{width:20px;height:20px}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap}
+.tip{color:var(--muted);font-size:.86rem;margin:0;flex:1 1 220px}
+.reset{font:600 .85rem/1 var(--body);background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:10px 14px;cursor:pointer}
+@media (prefers-reduced-motion:no-preference){.ex{transition:opacity .15s}}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Recomp Workouts</h1>
+    <div class="tabs" role="tablist" id="tabs"></div>
+  </header>
+  <main id="day"></main>
+</div>
+
+<script>
+/* Exercise animation engine: posed stick figure with 2-bone IK, keyframes, props. */
+const L={torso:50,neck:7,head:9,ua:29,fa:27,th:43,sh:41,ft:13};
+const R=Math.PI/180;
+const tdir=t=>[Math.sin(t*R),-Math.cos(t*R)];
+const ldir=a=>[Math.sin(a*R),Math.cos(a*R)];
+const add=(a,b,k=1)=>[a[0]+b[0]*k,a[1]+b[1]*k];
+function ik(A,T,l1,l2,hint){
+  const dx=T[0]-A[0],dy=T[1]-A[1],d=Math.hypot(dx,dy)||0.001;
+  const dc=Math.min(Math.max(d,Math.abs(l1-l2)+0.01),l1+l2-0.01);
+  const ux=dx/d,uy=dy/d,E=[A[0]+ux*dc,A[1]+uy*dc];
+  const ang=Math.acos(Math.max(-1,Math.min(1,(l1*l1+dc*dc-l2*l2)/(2*l1*dc))));
+  const c=Math.cos(ang),s=Math.sin(ang);
+  const j1=[A[0]+l1*(ux*c-uy*s),A[1]+l1*(ux*s+uy*c)];
+  const j2=[A[0]+l1*(ux*c+uy*s),A[1]+l1*(-ux*s+uy*c)];
+  const m=[(A[0]+E[0])/2,(A[1]+E[1])/2],sc=j=>(j[0]-m[0])*hint[0]+(j[1]-m[1])*hint[1];
+  return [sc(j1)>=sc(j2)?j1:j2,E];
+}
+function solve(p){
+  if(p.raw) return {pts:p.raw.pts,raw:p.raw};
+  const P={};const tl=p.tl??1;const t=p.t??0,t2=p.t2??t;
+  P.hip=p.hip;P.mid=add(P.hip,tdir(t),L.torso/2*tl);P.sh=add(P.mid,tdir(t2),L.torso/2*tl);
+  const pr=[Math.cos(t*R),Math.sin(t*R)],pr2=[Math.cos(t2*R),Math.sin(t2*R)];
+  const w=p.w??0,sw=p.sw??0;
+  P.hipN=add(P.hip,pr,w);P.hipF=add(P.hip,pr,-w);P.shN=add(P.sh,pr2,sw);P.shF=add(P.sh,pr2,-sw);
+  P.head=add(add(P.sh,tdir(t2+(p.n??0)),L.neck+L.head),[p.hdx??0,0]);
+  const ref=r=>typeof r[0]==="string"?add(r[0]==="s"?P.sh:r[0]==="h"?P.hip:P.head,[r[1],r[2]]):r;
+  const ls=p.ls??1,as=p.as??1;
+  for(const s of["N","F"]){
+    const a=ref(p["ank"+s]);
+    if(p["knee"+s]){P["knee"+s]=p["knee"+s];P["ank"+s]=a;}
+    else{const [k,e]=ik(P["hip"+s],a,L.th*ls,L.sh*ls,p["k"+s]??[1,0]);P["knee"+s]=k;P["ank"+s]=e;}
+    P["toe"+s]=add(P["ank"+s],ldir(p["f"+s]??75),L.ft*(p.fl??1));
+    const h=ref(p["hand"+s]);
+    if(p["elbow"+s]){P["elbow"+s]=p["elbow"+s];P["hand"+s]=h;}
+    else{const [e,hh]=ik(P["sh"+s],h,L.ua*as,L.fa*as,p["e"+s]??[0.3,1]);P["elbow"+s]=e;P["hand"+s]=hh;}
+  }
+  return {pts:P,hide:p.hide||[]};
+}
+function lerp(a,b,k){
+  if(typeof a==="number"&&typeof b==="number")return a+(b-a)*k;
+  if(Array.isArray(a)&&Array.isArray(b))return a.map((v,i)=>lerp(v,b[i],k));
+  if(a&&b&&typeof a==="object"){const o={};for(const key of new Set([...Object.keys(a),...Object.keys(b)]))o[key]=key in a&&key in b?lerp(a[key],b[key],k):(key in b?b[key]:a[key]);return o;}
+  return k<0.5?a:b;
+}
+const f=n=>n.toFixed(1);
+const ln=(a,b,c,wd)=>`<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="${c}" stroke-width="${wd}" stroke-linecap="round"/>`;
+function pt(P,spec){
+  if(Array.isArray(spec))return spec;
+  if(spec.startsWith("mid:")){const [a,b]=spec.slice(4).split(",");return [(P[a][0]+P[b][0])/2,(P[a][1]+P[b][1])/2];}
+  return P[spec];
+}
+function drawProp(o,P){
+  const S="var(--prop)",F="var(--propfill)",A="var(--wt)";
+  switch(o.type){
+    case"rect":return `<rect x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" rx="${o.rx??2}" fill="${F}" stroke="${S}" stroke-width="1.5"/>`;
+    case"line":return ln(o.a,o.b,o.c==="w"?A:S,o.wd??3);
+    case"wall":return `<rect x="${o.x}" y="${o.y??0}" width="${o.w??6}" height="${188-(o.y??0)}" fill="${F}" stroke="${S}" stroke-width="1.5"/>`;
+    case"circle":return `<circle cx="${o.x}" cy="${o.y}" r="${o.r}" fill="${o.fill==="w"?A:F}" stroke="${S}" stroke-width="1.5"/>`;
+    case"db":{const c=pt(P,o.at);return ln(add(c,[-7,0]),add(c,[7,0]),A,3)+`<rect x="${f(c[0]-10)}" y="${f(c[1]-5)}" width="5" height="10" rx="1.5" fill="${A}"/><rect x="${f(c[0]+5)}" y="${f(c[1]-5)}" width="5" height="10" rx="1.5" fill="${A}"/>`;}
+    case"kb":{const c=pt(P,o.at);return `<circle cx="${f(c[0])}" cy="${f(c[1]+9)}" r="8" fill="${A}"/><path d="M${f(c[0]-5)} ${f(c[1]+4)} V${f(c[1]-1)} H${f(c[0]+5)} V${f(c[1]+4)}" fill="none" stroke="${A}" stroke-width="2.5"/>`;}
+    case"plate":{const c=add(pt(P,o.at),o.off||[0,0]);return `<circle cx="${f(c[0])}" cy="${f(c[1])}" r="${o.r}" fill="none" stroke="${A}" stroke-width="4"/><circle cx="${f(c[0])}" cy="${f(c[1])}" r="2.5" fill="${A}"/>`;}
+    case"band":return ln(pt(P,o.from),pt(P,o.to),A,1.6);
+    case"onseg":{const a=P[o.a],b=P[o.b],c=[a[0]+(b[0]-a[0])*o.k,a[1]+(b[1]-a[1])*o.k-6];return `<rect x="${f(c[0]-9)}" y="${f(c[1]-5)}" width="18" height="10" rx="3" fill="${A}"/>`;}
+    case"pad":{const c=add(pt(P,o.at),o.off||[0,0]);return `<circle cx="${f(c[0])}" cy="${f(c[1])}" r="${o.r||6}" fill="var(--propfill)" stroke="var(--prop)" stroke-width="1.5"/>`;}
+    case"plat":{const c=add(pt(P,o.at),[4,-4]);return ln(add(c,[-13,-13]),add(c,[13,13]),"var(--prop)",5);}
+    case"cuff":{const c=pt(P,o.at);return `<rect x="${f(c[0]-5)}" y="${f(c[1]-4)}" width="10" height="8" rx="2" fill="${A}"/>`;}
+  }
+  return "";
+}
+function render(spec,pose){
+  const s=solve(pose),P=s.pts,hide=new Set(s.hide||[]);
+  const near="var(--fig)",far="var(--figfar)",W=5;
+  let o=`<line x1="0" y1="188" x2="260" y2="188" stroke="var(--floor)" stroke-width="2"/>`;
+  const sc=spec.scene||[];
+  sc.filter(x=>!x.layer).forEach(x=>o+=drawProp(x,P));
+  if(s.raw){
+    (s.raw.segs||[]).forEach(([a,b,c])=>o+=ln(P[a],P[b],c==="far"?far:near,s.raw.wd||W));
+    if(s.raw.poly)s.raw.poly.forEach(pl=>o+=`<polyline points="${pl.p.map(n=>P[n].map(f).join(",")).join(" ")}" fill="none" stroke="${near}" stroke-width="${pl.wd||W}" stroke-linejoin="round" stroke-linecap="round"/>`);
+    if(s.raw.head)o+=`<circle cx="${f(P[s.raw.head][0])}" cy="${f(P[s.raw.head][1])}" r="${L.head}" fill="var(--bg2)" stroke="${near}" stroke-width="3.5"/>`;
+  }else{
+    const limb=(sd,c)=>{
+      if(!hide.has("leg"+sd))o+=ln(P["hip"+sd],P["knee"+sd],c,W)+ln(P["knee"+sd],P["ank"+sd],c,W)+ln(P["ank"+sd],P["toe"+sd],c,W-1);
+      if(!hide.has("arm"+sd))o+=ln(P["sh"+sd],P["elbow"+sd],c,W-0.5)+ln(P["elbow"+sd],P["hand"+sd],c,W-0.5);
+    };
+    limb("F",far);
+    sc.filter(x=>x.layer==="mid").forEach(x=>o+=drawProp(x,P));
+    if(!hide.has("torso")){
+      if(Math.hypot(P.hipN[0]-P.hipF[0],P.hipN[1]-P.hipF[1])>1)o+=ln(P.hipN,P.hipF,near,W);
+      if(Math.hypot(P.shN[0]-P.shF[0],P.shN[1]-P.shF[1])>1)o+=ln(P.shN,P.shF,near,W);
+      o+=ln(P.hip,P.mid,near,W+1)+ln(P.mid,P.sh,near,W+1);
+    }
+    if(!hide.has("head"))o+=ln(P.sh,P.head,near,3.5)+`<circle cx="${f(P.head[0])}" cy="${f(P.head[1])}" r="${L.head}" fill="var(--bg2)" stroke="${near}" stroke-width="3.5"/>`;
+    limb("N",near);
+  }
+  sc.filter(x=>x.layer==="top").forEach(x=>o+=drawProp(x,P));
+  const vb=(spec.vb||"0 0 260 196").split(" ").map(Number);
+  if(pose.label)o+=`<text x="${vb[0]+8}" y="${vb[1]+16}" font-size="12" font-weight="600" fill="var(--figfar)" font-family="Barlow,system-ui,sans-serif">${pose.label}</text>`;
+  return o;
+}
+function poseAt(spec,ms){
+  const fr=spec.frames,n=fr.length;let total=0;const segs=[];
+  for(let i=0;i<n;i++){const nx=fr[(i+1)%n];segs.push({a:fr[i],b:nx,hold:fr[i].hold||0,d:nx.cut?0:(nx.d??1000)});total+=(fr[i].hold||0)+(nx.cut?0:(nx.d??1000));}
+  let t=(ms*(spec.speed||1))%total;
+  for(const s of segs){
+    if(t<s.hold)return s.a.p;t-=s.hold;
+    if(t<s.d){const k=(1-Math.cos(Math.PI*t/s.d))/2;return lerp(s.a.p,s.b.p,k);}t-=s.d;
+  }
+  return fr[0].p;
+}
+
+/* ---------- Exercise library ---------- */
+const STAND={hip:[130,100],t:0,ankN:[133,184],ankF:[128,184]};
+const run=(sp)=>({speed:sp,frames:[
+  {d:500,p:{hip:[130,104],t:12,ankN:["h",26,76],ankF:["h",-30,62],kN:[1,0],kF:[1,0.3],handN:["s",-14,32],eN:[-1,0.2],handF:["s",20,20],eF:[0.2,1]}},
+  {d:500,p:{hip:[130,100],t:12,ankF:["h",26,76],ankN:["h",-30,62],kN:[1,0.3],kF:[1,0],handF:["s",-14,32],eF:[-1,0.2],handN:["s",20,20],eN:[0.2,1]}}]});
+const SPd={hip:[150,180],t:-58,w:5,sw:8,ankN:[236,173],ankF:[236,182],elbowF:[102,187],handF:[113,188],handN:["h",0,-6],eN:[0,-1],fN:100,fF:100,fl:.5};
+const SPu={...SPd,hip:[154,162],t:-78};
+const sidePlank=(lab)=>[
+  {d:300,cut:true,hold:400,p:{label:lab,...SPd}},
+  {d:900,hold:2500,p:{label:lab,...SPu}}];
+const A={
+goblet:{scene:[{type:"kb",at:"mid:handN,handF"}],frames:[
+  {d:1100,hold:300,p:{...STAND,hip:[128,100],t:4,handN:["s",14,10],handF:["s",12,10],eN:[0.2,1],eF:[0.2,1]}},
+  {d:1100,hold:300,p:{...STAND,hip:[106,141],t:34,handN:["s",14,10],handF:["s",12,10],eN:[0.2,1],eF:[0.2,1]}}]},
+rdl:{scene:[{type:"db",at:"handN"}],frames:[
+  {d:1300,hold:300,p:{...STAND,ankN:[131,184],ankF:[129,184],t:3,handN:["s",2,55],handF:["s",0,55]}},
+  {d:1300,hold:300,p:{...STAND,ankN:[131,184],ankF:[129,184],hip:[110,104],t:78,handN:["s",-3,54],handF:["s",-5,54]}}]},
+bss:{scene:[{type:"rect",x:30,y:150,w:56,h:38},{type:"db",at:"handN"}],frames:[
+  {d:1100,hold:300,p:{hip:[120,100],t:8,ankN:[154,184],ankF:[72,146],kF:[0.3,1],fF:-73,handN:["s",2,54],handF:["s",0,54]}},
+  {d:1100,hold:300,p:{hip:[117,139],t:14,ankN:[154,184],ankF:[72,146],kF:[0.3,1],fF:-73,handN:["s",2,54],handF:["s",0,54]}}]},
+legcurl:{scene:[{type:"line",a:[80,146],b:[70,84],wd:6},{type:"rect",x:78,y:146,w:68,h:8},{type:"line",a:[100,154],b:[100,188]},{type:"line",a:[178,120],b:[178,188]},{type:"pad",at:[150,129],r:6},{type:"pad",at:"ankN",off:[3,6],r:6,layer:"top"}],frames:[
+  {d:900,hold:200,p:{hip:[108,140],t:-10,kneeN:[151,140],kneeF:[149,140],ankN:[192,147],ankF:[190,147],fN:175,fF:175,handN:["h",16,6],handF:["h",14,6],eN:[-0.3,1],eF:[-0.3,1]}},
+  {d:900,hold:300,p:{hip:[108,140],t:-10,kneeN:[151,140],kneeF:[149,140],ankN:[138,179],ankF:[136,179],fN:110,fF:110,handN:["h",16,6],handF:["h",14,6],eN:[-0.3,1],eF:[-0.3,1]}},
+  {d:3000,p:{hip:[108,140],t:-10,kneeN:[151,140],kneeF:[149,140],ankN:[192,147],ankF:[190,147],fN:175,fF:175,handN:["h",16,6],handF:["h",14,6],eN:[-0.3,1],eF:[-0.3,1]}}]},
+latraise:{scene:[{type:"db",at:"handN"},{type:"db",at:"handF"}],frames:[
+  {d:900,hold:200,p:{...STAND,w:10,sw:16,ankN:[142,184],ankF:[118,184],fN:100,fF:-100,fl:.6,elbowN:[149,77],handN:[150,104],elbowF:[111,77],handF:[110,104]}},
+  {d:900,hold:400,p:{...STAND,w:10,sw:16,ankN:[142,184],ankF:[118,184],fN:100,fF:-100,fl:.6,elbowN:[174,54],handN:[200,58],elbowF:[86,54],handF:[60,58]}}]},
+fly:{scene:[{type:"wall",x:0,y:10},{type:"wall",x:254,y:10},{type:"band",from:"handN",to:[254,30]},{type:"band",from:"handF",to:[6,30]}],frames:[
+  {d:1000,hold:300,p:{...STAND,w:10,sw:16,ankN:[142,184],ankF:[118,184],fN:100,fF:-100,fl:.6,elbowN:[172,58],handN:[196,64],elbowF:[88,58],handF:[64,64]}},
+  {d:1000,hold:500,p:{...STAND,w:10,sw:16,ankN:[142,184],ankF:[118,184],fN:100,fF:-100,fl:.6,elbowN:[160,72],handN:[136,80],elbowF:[100,72],handF:[124,80]}}]},
+curl:{scene:[{type:"db",at:"handN"}],frames:[
+  {d:900,hold:200,p:{...STAND,elbowN:[132,79],handN:[134,106],elbowF:[128,79],handF:[130,106]}},
+  {d:900,hold:400,p:{...STAND,elbowN:[132,79],handN:[150,58],elbowF:[128,79],handF:[146,58]}}]},
+pushdown:{scene:[{type:"band",from:"handN",to:[172,0]}],frames:[
+  {d:900,hold:200,p:{...STAND,elbowN:[134,79],handN:[156,66],elbowF:[130,79],handF:[152,66]}},
+  {d:900,hold:400,p:{...STAND,elbowN:[134,79],handN:[138,106],elbowF:[130,79],handF:[134,106]}}]},
+ohext:{vb:"20 -26 220 220",scene:[{type:"db",at:"handN",layer:"top"}],frames:[
+  {d:1100,hold:200,p:{...STAND,elbowN:[134,21],handN:[116,38],elbowF:[132,21],handF:[114,38]}},
+  {d:1000,hold:400,p:{...STAND,elbowN:[134,21],handN:[137,-6],elbowF:[132,21],handF:[135,-6]}}]},
+inclinecurl:{scene:[{type:"line",a:[56,96],b:[96,156],wd:6},{type:"rect",x:86,y:154,w:46,h:6},{type:"line",a:[100,160],b:[100,188]},{type:"line",a:[70,120],b:[64,188]},{type:"db",at:"handN"}],frames:[
+  {d:1000,hold:200,p:{hip:[102,150],t:-35,ankN:[160,184],ankF:[156,184],kN:[1,-0.5],kF:[1,-0.5],elbowN:[74,138],handN:[74,165],elbowF:[72,138],handF:[72,165]}},
+  {d:1000,hold:400,p:{hip:[102,150],t:-35,ankN:[160,184],ankF:[156,184],kN:[1,-0.5],kF:[1,-0.5],elbowN:[74,138],handN:[90,117],elbowF:[72,138],handF:[88,117]}}]},
+pecdeck:{scene:[{type:"rect",x:112,y:70,w:36,h:78,layer:"mid"},{type:"rect",x:104,y:148,w:52,h:8},{type:"line",a:[130,156],b:[130,188]},{type:"line",a:[64,40],b:[64,188]},{type:"line",a:[196,40],b:[196,188]}],frames:[
+  {d:1000,hold:300,p:{hip:[130,148],t:0,w:10,sw:16,kneeN:[146,156],kneeF:[114,156],ankN:[148,184],ankF:[112,184],fN:100,fF:-100,fl:.6,elbowN:[172,104],handN:[194,96],elbowF:[88,104],handF:[66,96]}},
+  {d:1000,hold:500,p:{hip:[130,148],t:0,w:10,sw:16,kneeN:[146,156],kneeF:[114,156],ankN:[148,184],ankF:[112,184],fN:100,fF:-100,fl:.6,elbowN:[160,114],handN:[136,108],elbowF:[100,114],handF:[124,108]}}]},
+plank:{vb:"60 96 196 98",frames:[
+  {d:1200,hold:2500,p:{hip:[150,163],t:-84,n:-6,ankN:[232,180],ankF:[232,182],kN:[0,1],kF:[0,1],fN:20,fF:20,elbowN:[103,187],handN:[128,187],elbowF:[100,187],handF:[125,187]}},
+  {d:1200,hold:400,p:{hip:[150,166],t:-84,n:-6,ankN:[232,181],ankF:[232,183],kN:[0,1],kF:[0,1],fN:20,fF:20,elbowN:[103,187],handN:[128,187],elbowF:[100,187],handF:[125,187]}}]},
+situp:{frames:[
+  {d:1200,hold:200,p:{hip:[150,180],t:-90,ankN:[196,184],ankF:[194,184],kN:[0.3,-1],kF:[0.3,-1],fN:75,fF:75,handN:["s",14,-6],handF:["s",12,-6],eN:[0,-1],eF:[0,-1]}},
+  {d:1200,hold:300,p:{hip:[150,180],t:-18,ankN:[196,184],ankF:[194,184],kN:[0.3,-1],kF:[0.3,-1],fN:75,fF:75,handN:["s",8,14],handF:["s",6,14],eN:[1,0],eF:[1,0]}}]},
+deadbug:{frames:[
+  {d:900,hold:200,p:{hip:[150,178],t:-90,ankN:[191,135],ankF:[189,135],kN:[-1,-1],kF:[-1,-1],fN:170,fF:170,handN:[100,122],handF:[98,122],eN:[-1,0],eF:[-1,0]}},
+  {d:1200,hold:600,p:{hip:[150,178],t:-90,ankN:[191,135],ankF:[232,170],kN:[-1,-1],kF:[-1,-1],fN:170,fF:110,handN:[46,172],handF:[98,122],eN:[0,-1],eF:[-1,0]}},
+  {d:1200,hold:200,p:{hip:[150,178],t:-90,ankN:[191,135],ankF:[189,135],kN:[-1,-1],kF:[-1,-1],fN:170,fF:170,handN:[100,122],handF:[98,122],eN:[-1,0],eF:[-1,0]}},
+  {d:1200,hold:600,p:{hip:[150,178],t:-90,ankN:[232,170],ankF:[189,135],kN:[-1,-1],kF:[-1,-1],fN:110,fF:170,handN:[100,122],handF:[46,172],eN:[-1,0],eF:[0,-1]}}]},
+hamstretch:{scene:[{type:"band",from:"handN",to:"toeN",layer:"top"}],frames:[
+  {d:1500,hold:500,p:{hip:[150,180],t:-90,ankN:[204,116],ankF:[234,183],kN:[1,-0.2],kF:[0,-1],fN:-150,fF:180,handN:[146,148],handF:[144,150],eN:[0,-1],eF:[0,-1]}},
+  {d:1500,hold:2500,p:{hip:[150,180],t:-90,ankN:[179,101],ankF:[234,183],kN:[1,-0.2],kF:[0,-1],fN:-150,fF:180,handN:[140,144],handF:[138,146],eN:[0,-1],eF:[0,-1]}}]},
+legpress:{scene:[{type:"line",a:[56,118],b:[92,170],wd:6},{type:"rect",x:84,y:166,w:40,h:8},{type:"line",a:[118,176],b:[214,80],wd:3},{type:"line",a:[100,174],b:[100,188]},{type:"line",a:[214,80],b:[214,188]},{type:"plat",at:"ankN",layer:"top"}],frames:[
+  {d:1100,hold:300,p:{hip:[100,166],t:-55,n:10,ankN:[146,122],ankF:[144,124],kN:[0,-1],kF:[0,-1],fN:-135,fF:-135,handN:["h",10,6],handF:["h",8,6],eN:[0,1],eF:[0,1]}},
+  {d:1300,hold:300,p:{hip:[100,166],t:-55,n:10,ankN:[160,104],ankF:[158,106],kN:[0,-1],kF:[0,-1],fN:-135,fF:-135,handN:["h",10,6],handF:["h",8,6],eN:[0,1],eF:[0,1]}}]},
+nordic:{scene:[{type:"rect",x:28,y:176,w:22,h:12},{type:"band",from:"sh",to:[10,40]}],frames:[
+  {d:500,hold:500,p:{hip:[80,141],t:0,ankN:[39,182],ankF:[37,182],kN:[0,1],kF:[0,1],fN:-80,fF:-80,handN:["s",10,16],handF:["s",8,16],eN:[0.5,1],eF:[0.5,1]}},
+  {d:1800,p:{hip:[115.2,159.3],t:55,ankN:[39,182],ankF:[37,182],kN:[0,1],kF:[0,1],fN:-80,fF:-80,handN:["s",12,20],handF:["s",10,20],eN:[0.5,1],eF:[0.5,1]}},
+  {d:1400,hold:300,p:{hip:[121.5,172.9],t:75,ankN:[39,182],ankF:[37,182],kN:[0,1],kF:[0,1],fN:-80,fF:-80,handN:["s",14,24],handF:["s",12,24],eN:[0.5,1],eF:[0.5,1]}}]},
+hipflex:{scene:[{type:"wall",x:0,y:150},{type:"band",from:"ankN",to:[6,178]}],frames:[
+  {d:1000,hold:300,p:{hip:[100,180],t:90,n:-8,ankN:[16,182],ankF:[18,183],kN:[0,-1],kF:[0,-1],fN:180,fF:180,handN:["h",12,4],handF:["h",14,4],eN:[0,1],eF:[0,1]}},
+  {d:1000,hold:500,p:{hip:[100,180],t:90,n:-8,ankN:[72,138],ankF:[18,183],kN:[1,-1],kF:[0,-1],fN:180,fF:180,handN:["h",12,4],handF:["h",14,4],eN:[0,1],eF:[0,1]}}]},
+adduct:{scene:[{type:"wall",x:0,y:120},{type:"band",from:"ankF",to:[6,174]}],frames:[
+  {d:1100,hold:300,p:{hip:[130,100],t:0,w:10,sw:16,ankN:[142,184],ankF:[96,178],kN:[0.2,0],kF:[-0.2,0],fN:100,fF:-100,fl:.6,handN:["h",16,-4],handF:["h",-16,-4],eN:[1,0],eF:[-1,0]}},
+  {d:1100,hold:300,p:{hip:[130,100],t:0,w:10,sw:16,ankN:[142,184],ankF:[136,180],kN:[0.2,0],kF:[-0.2,0],fN:100,fF:-100,fl:.6,handN:["h",16,-4],handF:["h",-16,-4],eN:[1,0],eF:[-1,0]}}]},
+rathleff:{scene:[{type:"rect",x:125,y:178,w:70,h:10},{type:"wall",x:186,y:20},{type:"circle",x:139,y:175,r:3.5,layer:"top"}],frames:[
+  {d:3000,hold:0,p:{hip:[127,96],t:2,ankN:[126,177],ankF:["h",-18,72],kF:[1,0],fN:99,handN:[184,78],handF:["s",4,54],eN:[0,1]}},
+  {d:3000,hold:2000,p:{hip:[129,82],t:2,ankN:[130,163],ankF:["h",-18,72],kF:[1,0],fN:32,handN:[184,72],handF:["s",4,54],eN:[0,1]}}]},
+hipER:{scene:[{type:"rect",x:72,y:138,w:118,h:50,layer:"mid"}],frames:[
+  {d:1200,hold:300,p:{hip:[130,100],t:0,w:10,sw:16,ankF:[122,184],kF:[-0.2,0],kneeN:[178,132],ankN:[114,134],fN:-90,fl:.5,fF:-100,handN:["h",16,-4],handF:["h",-16,-4],eN:[1,0],eF:[-1,0]}},
+  {d:1200,hold:800,p:{hip:[130,104],t:0,tl:.7,n:0,w:10,sw:16,ankF:[122,184],kF:[-0.2,0],kneeN:[178,132],ankN:[114,134],fN:-90,fl:.5,fF:-100,handN:["h",18,-2],handF:["h",-18,-2],eN:[1,0],eF:[-1,0]}}]},
+hipIR:{scene:[{type:"rect",x:70,y:130,w:120,h:22},{type:"line",a:[80,152],b:[80,188]},{type:"line",a:[180,152],b:[180,188]}],frames:[
+  {d:1000,hold:300,p:{hip:[130,124],t:0,w:16,ls:.5,kneeN:[146,126],kneeF:[114,126],ankN:[146,84],ankF:[114,84],fN:180,fF:180,fl:.6,hide:["torso","head","armN","armF"],handN:["s",0,0],handF:["s",0,0]}},
+  {d:1000,hold:600,p:{hip:[130,124],t:0,w:16,ls:.5,kneeN:[146,126],kneeF:[114,126],ankN:[180,98],ankF:[80,98],fN:120,fF:-120,fl:.6,hide:["torso","head","armN","armF"],handN:["s",0,0],handF:["s",0,0]}}]},
+abduct:{scene:[{type:"cuff",at:"ankN",layer:"top"}],frames:[
+  {d:1100,hold:300,p:{hip:[140,170],t:-90,w:8,sw:10,ankN:[222,172],ankF:[224,182],kN:[0,-0.2],kF:[0,1],fN:180,fF:180,fl:.5,handF:[74,168],eF:[0,1],handN:[112,182],eN:[0,-1]}},
+  {d:1100,hold:500,p:{hip:[140,170],t:-90,w:8,sw:10,ankN:[214,128],ankF:[224,182],kN:[0,-0.2],kF:[0,1],fN:180,fF:180,fl:.5,handF:[74,168],eF:[0,1],handN:[112,182],eN:[0,-1]}}]},
+soleus:{scene:[{type:"wall",x:186,y:20},{type:"kb",at:"handF"}],frames:[
+  {d:1300,hold:700,p:{hip:[118,112],t:8,ankN:[130,184],ankF:["h",-12,66],kN:[1,0],kF:[1,0],fN:75,handN:[184,74],eN:[0,1],handF:["s",-2,52]}},
+  {d:1300,hold:700,p:{hip:[123,104],t:8,ankN:[135,176],ankF:["h",-12,66],kN:[1,0],kF:[1,0],fN:35,handN:[184,68],eN:[0,1],handF:["s",-2,52]}}]},
+sideplank:{vb:"60 96 196 98",frames:sidePlank("")},
+butterfly:{scene:[{type:"onseg",a:"hipN",b:"kneeN",k:.62,layer:"top"},{type:"onseg",a:"hipF",b:"kneeF",k:.62,layer:"top"}],frames:[
+  {d:2200,hold:500,p:{hip:[130,174],t:0,w:12,sw:16,kneeN:[184,150],kneeF:[76,150],ankN:[136,182],ankF:[124,182],fN:30,fF:-30,fl:.5,handN:["h",36,-14],handF:["h",-36,-14],eN:[1,0],eF:[-1,0]}},
+  {d:2200,hold:1500,p:{hip:[130,174],t:0,w:12,sw:16,kneeN:[190,170],kneeF:[70,170],ankN:[136,182],ankF:[124,182],fN:30,fF:-30,fl:.5,handN:["h",38,-4],handF:["h",-38,-4],eN:[1,0],eF:[-1,0]}}]},
+couch:{scene:[{type:"rect",x:0,y:118,w:42,h:70}],frames:[
+  {d:1500,hold:500,p:{hip:[70,146],t:28,kneeF:[52,184],ankF:[45,140],fF:180,ankN:[142,184],kN:[1,-0.2],handN:["h",46,4],handF:["h",44,4],eN:[0.3,1],eF:[0.3,1]}},
+  {d:1500,hold:2500,p:{hip:[78,148],t:-3,kneeF:[52,184],ankF:[45,140],fF:180,ankN:[142,184],kN:[1,-0.2],handN:["h",4,-2],handF:["h",2,-2],eN:[-1,0.5],eF:[-1,0.5]}}]},
+gastroc:{scene:[{type:"wall",x:200,y:10}],frames:[
+  {d:1500,hold:300,p:{hip:[140,104],t:20,ankN:[168,184],ankF:[106,184],kN:[1,0],kF:[1,0],handN:[200,66],handF:[200,70],eN:[0,1],eF:[0,1]}},
+  {d:1500,hold:2500,p:{hip:[152,110],t:28,ankN:[168,184],ankF:[106,184],kN:[1,0],kF:[1,0],handN:[200,72],handF:[200,76],eN:[0,1],eF:[0,1]}}]},
+soleusStretch:{scene:[{type:"wall",x:200,y:10}],frames:[
+  {d:1500,hold:300,p:{hip:[140,104],t:20,ankN:[168,184],ankF:[118,184],kN:[1,0],kF:[1,0],handN:[200,66],handF:[200,70],eN:[0,1],eF:[0,1]}},
+  {d:1500,hold:2500,p:{hip:[140,126],t:18,ankN:[168,184],ankF:[118,184],kN:[1,0],kF:[1,0.2],handN:[200,92],handF:[200,96],eN:[0,1],eF:[0,1]}}]},
+textension:{scene:[{type:"circle",x:118,y:180,r:8}],frames:[
+  {d:1300,hold:300,p:{hip:[150,180],t:-80,t2:-70,n:8,ankN:[196,184],ankF:[194,184],kN:[0,-1],kF:[0,-1],handN:["head",0,-2],handF:["head",0,0],eN:[0,-1],eF:[0,-1]}},
+  {d:1300,hold:900,p:{hip:[150,180],t:-81,t2:-95,n:0,ankN:[196,184],ankF:[194,184],kN:[0,-1],kF:[0,-1],handN:["head",0,-2],handF:["head",0,0],eN:[0,-1],eF:[0,-1]}}]},
+openbook:{frames:[
+  {d:1600,hold:400,p:{raw:{head:"hd",segs:[["sB","sT"],["sB","eB"],["eB","hB"],["sT","eT"],["eT","hT"]],pts:{hd:[118,160],sB:[130,180],sT:[130,152],eB:[160,182],hB:[190,183],eT:[160,166],hT:[190,176]}}}},
+  {d:1000,p:{raw:{head:"hd",segs:[["sB","sT"],["sB","eB"],["eB","hB"],["sT","eT"],["eT","hT"]],pts:{hd:[118,160],sB:[130,180],sT:[128,153],eB:[160,182],hB:[190,183],eT:[136,124],hT:[134,96]}}}},
+  {d:1200,hold:1200,p:{raw:{head:"hd",segs:[["sB","sT"],["sB","eB"],["eB","hB"],["sT","eT"],["eT","hT"]],pts:{hd:[118,160],sB:[132,180],sT:[112,166],eB:[160,182],hB:[190,183],eT:[86,176],hT:[62,184]}}}},
+  {d:1000,p:{raw:{head:"hd",segs:[["sB","sT"],["sB","eB"],["eB","hB"],["sT","eT"],["eT","hT"]],pts:{hd:[118,160],sB:[130,180],sT:[128,153],eB:[160,182],hB:[190,183],eT:[136,124],hT:[134,96]}}}}]},
+shortfoot:{frames:[
+  {d:1200,hold:400,p:{raw:{wd:7,segs:[["kn","an"]],poly:[{p:["an","hl","ar","bl","to"],wd:7}],pts:{kn:[78,10],an:[78,128],hl:[62,176],ar:[112,166],bl:[166,178],to:[196,180]}}}},
+  {d:1200,hold:2500,p:{raw:{wd:7,segs:[["kn","an"]],poly:[{p:["an","hl","ar","bl","to"],wd:7}],pts:{kn:[78,10],an:[78,124],hl:[62,176],ar:[108,146],bl:[158,178],to:[188,180]}}}}]},
+run:run(1),jog:run(0.6),
+mcgill:{vb:"16 90 236 104",frames:[
+  {d:300,cut:true,hold:300,p:{label:"Curl-up",hip:[150,180],t:-90,n:0,ankN:[192,184],ankF:[234,183],kN:[0,-1],kF:[0,-1],fN:120,fF:180,handN:["h",-10,4],handF:["h",-12,4],eN:[0,1],eF:[0,1]}},
+  {d:800,hold:1800,p:{label:"Curl-up",hip:[150,180],t:-90,t2:-80,n:0,ankN:[192,184],ankF:[234,183],kN:[0,-1],kF:[0,-1],fN:120,fF:180,handN:["h",-10,4],handF:["h",-12,4],eN:[0,1],eF:[0,1]}},
+  {d:800,hold:300,p:{label:"Curl-up",hip:[150,180],t:-90,n:0,ankN:[192,184],ankF:[234,183],kN:[0,-1],kF:[0,-1],fN:120,fF:180,handN:["h",-10,4],handF:["h",-12,4],eN:[0,1],eF:[0,1]}},
+  ...sidePlank("Side plank"),
+  {d:800,hold:300,p:{label:"Side plank",...SPd}},
+  {d:300,cut:true,hold:400,p:{label:"Bird dog",hip:[110,140],t:90,ankN:[69,184],ankF:[67,184],kN:[0,1],kF:[0,1],fN:-90,fF:-90,handN:[160,186],handF:[158,186],eN:[0,-1],eF:[0,-1]}},
+  {d:1000,hold:1800,p:{label:"Bird dog",hip:[110,140],t:90,ankN:[69,184],ankF:[26,140],kN:[0,1],kF:[0,1],fN:-90,fF:-150,handN:[214,136],handF:[158,186],eN:[0,-1],eF:[0,-1]}},
+  {d:1000,hold:300,p:{label:"Bird dog",hip:[110,140],t:90,ankN:[69,184],ankF:[67,184],kN:[0,1],kF:[0,1],fN:-90,fF:-90,handN:[160,186],handF:[158,186],eN:[0,-1],eF:[0,-1]}}]},
+trapbar:{scene:[{type:"plate",at:"handN",r:18,off:[0,0]}],frames:[
+  {d:1300,hold:300,p:{...STAND,ankN:[132,184],ankF:[130,184],hip:[104,146],t:42,handN:["s",0,57],handF:["s",-2,57],kN:[1,0],kF:[1,0]}},
+  {d:1300,hold:300,p:{...STAND,ankN:[132,184],ankF:[130,184],hip:[128,100],t:0,handN:["s",1,56],handF:["s",-1,56]}}]},
+hipthrust:{scene:[{type:"rect",x:30,y:150,w:60,h:38},{type:"plate",at:"hip",r:15,off:[2,-14],layer:"top"}],frames:[
+  {d:1100,hold:300,p:{hip:[130,176],t:-56,n:0,ankN:[176,184],ankF:[174,184],kN:[0,-1],kF:[0,-1],handN:["h",2,-12],handF:["h",0,-12],eN:[0,-1],eF:[0,-1]}},
+  {d:1100,hold:600,p:{hip:[137,148],t:-92,n:0,ankN:[176,184],ankF:[174,184],kN:[0,-1],kF:[0,-1],handN:["h",2,-12],handF:["h",0,-12],eN:[0,-1],eF:[0,-1]}}]},
+incline:{scene:[{type:"line",a:[56,96],b:[96,156],wd:6},{type:"rect",x:86,y:154,w:46,h:6},{type:"line",a:[100,160],b:[100,188]},{type:"line",a:[70,120],b:[64,188]},{type:"db",at:"handN"}],frames:[
+  {d:1100,hold:300,p:{hip:[102,150],t:-35,ankN:[160,184],ankF:[156,184],kN:[1,-0.5],kF:[1,-0.5],handN:["s",8,-4],handF:["s",6,-4],eN:[-1,1],eF:[-1,1]}},
+  {d:1100,hold:300,p:{hip:[102,150],t:-35,ankN:[160,184],ankF:[156,184],kN:[1,-0.5],kF:[1,-0.5],handN:["s",16,-54],handF:["s",14,-54],eN:[-1,0],eF:[-1,0]}}]},
+onearm:{scene:[{type:"rect",x:58,y:148,w:110,h:8},{type:"line",a:[70,156],b:[70,188]},{type:"line",a:[156,156],b:[156,188]},{type:"db",at:"handN"}],frames:[
+  {d:1000,hold:300,p:{hip:[100,106],t:85,ankN:[72,184],kN:[1,0],kneeF:[100,146],ankF:[62,146],fF:-90,handF:[150,146],eF:[-0.3,0],handN:["s",0,54],eN:[0,1]}},
+  {d:1000,hold:500,p:{hip:[100,106],t:85,ankN:[72,184],kN:[1,0],kneeF:[100,146],ankF:[62,146],fF:-90,handF:[150,146],eF:[-0.3,0],handN:["s",-14,22],eN:[-0.3,-1]}}]},
+facepull:{scene:[{type:"wall",x:244,y:10},{type:"band",from:"mid:handN,handF",to:[244,40]}],frames:[
+  {d:1000,hold:300,p:{hip:[126,100],t:-4,ankN:[142,184],ankF:[110,184],handN:["s",54,-6],handF:["s",52,-6],eN:[0,1],eF:[0,1]}},
+  {d:1000,hold:600,p:{hip:[126,100],t:-4,ankN:[142,184],ankF:[110,184],handN:["s",10,-18],handF:["s",8,-18],eN:[-1,-0.4],eF:[-1,-0.4]}}]},
+chintuck:{vb:"60 0 140 120",frames:[
+  {d:900,hold:500,p:{...STAND,hdx:7,n:12,handN:["s",2,54],handF:["s",0,54]}},
+  {d:900,hold:1500,p:{...STAND,hdx:-2,n:-4,handN:["s",2,54],handF:["s",0,54]}}]},
+pullapart:{vb:"20 0 220 150",scene:[{type:"band",from:"handN",to:"handF",layer:"top"}],frames:[
+  {d:1000,hold:300,p:{...STAND,w:10,sw:16,ankN:[142,184],ankF:[118,184],kN:[0.2,0],kF:[-0.2,0],fN:100,fF:-100,fl:.6,elbowN:[142,58],handN:[136,62],elbowF:[118,58],handF:[124,62]}},
+  {d:1000,hold:500,p:{...STAND,w:10,sw:16,ankN:[142,184],ankF:[118,184],kN:[0.2,0],kF:[-0.2,0],fN:100,fF:-100,fl:.6,elbowN:[174,52],handN:[202,54],elbowF:[86,52],handF:[58,54]}}]},
+pulldown:{scene:[{type:"rect",x:84,y:154,w:50,h:8},{type:"line",a:[108,162],b:[108,188]},{type:"circle",x:156,y:136,r:6},{type:"band",from:"mid:handN,handF",to:[140,0]}],frames:[
+  {d:1100,hold:300,p:{hip:[108,150],t:-10,ankN:[152,184],ankF:[148,184],kN:[1,-0.4],kF:[1,-0.4],handN:["s",8,-54],handF:["s",6,-54],eN:[-0.5,0],eF:[-0.5,0]}},
+  {d:1100,hold:500,p:{hip:[108,150],t:-12,ankN:[152,184],ankF:[148,184],kN:[1,-0.4],kF:[1,-0.4],handN:["s",14,2],handF:["s",12,2],eN:[-1,1],eF:[-1,1]}}]},
+bench:{scene:[{type:"rect",x:66,y:154,w:110,h:8},{type:"line",a:[80,162],b:[80,188]},{type:"line",a:[160,162],b:[160,188]},{type:"db",at:"handN"}],frames:[
+  {d:1100,hold:300,p:{hip:[150,148],t:-90,ankN:[200,184],ankF:[196,184],kN:[0,-1],kF:[0,-1],handN:["s",6,-12],handF:["s",4,-12],eN:[0,1],eF:[0,1]}},
+  {d:1100,hold:300,p:{hip:[150,148],t:-90,ankN:[200,184],ankF:[196,184],kN:[0,-1],kF:[0,-1],handN:["s",4,-55],handF:["s",2,-55],eN:[1,0],eF:[1,0]}}]},
+csrow:{scene:[{type:"line",a:[60,163],b:[152,105],wd:7},{type:"line",a:[80,150],b:[80,188]},{type:"line",a:[140,113],b:[146,188]},{type:"db",at:"handN"}],frames:[
+  {d:1000,hold:300,p:{hip:[86,138],t:58,ankN:[40,184],ankF:[44,184],kN:[-0.3,1],kF:[-0.3,1],fN:60,fF:60,handN:["s",0,54],handF:["s",-2,54],eN:[0,1],eF:[0,1]}},
+  {d:1000,hold:500,p:{hip:[86,138],t:58,ankN:[40,184],ankF:[44,184],kN:[-0.3,1],kF:[-0.3,1],fN:60,fF:60,handN:["s",-12,20],handF:["s",-14,20],eN:[-1,-0.6],eF:[-1,-0.6]}}]}
+};
+
+const GIF = {"rdl": "gifs/rdl.gif", "chintuck": "gifs/chintuck.gif", "onearm": "gifs/onearm.gif", "facepull": "gifs/facepull.gif", "rathleff": "gifs/rathleff.gif", "goblet": "gifs/goblet.gif", "bss": "gifs/bss.gif", "bench": "gifs/bench.gif", "pulldown": "gifs/pulldown.gif", "latraise": "gifs/latraise.gif"};
+const YT = id => "https://www.youtube.com/watch?v=" + id;
+const DAYS = [
+  {key:"d1", tab:"Day 1", title:"Lower: squat + hamstrings", sub:"Keep the 4x4 at least a day away from this session.", groups:[
+    {label:"Main", items:[
+      ["Back squat or goblet squat","3–4 × 5–8","Brace before each rep","JO7D6GJ98wY","goblet"],
+      ["Romanian deadlift","3 × 8","Hamstrings under load at length","hQgFixeXdZo","rdl"],
+      ["Bulgarian split squat","3 × 8/side","Note any left/right gap","VPhhE6bBzZE","bss"],
+      ["Seated hamstring curl (machine)","3 × 8–12","Slow 3s lowering. Lying leg curl if no seated machine","92MK-Qx3TiM","legcurl"],
+      ["Banded hip flexion","2–3 × 8–10/side","Low back stays flat on the floor","_yePkAW1beU","hipflex"],
+      ["Cable/banded hip adduction","2–3 × 8–10/side","Drop this first if short on time","SIQrpq6YnT8","adduct"],
+      ["Rathleff heel raise","3×12 → 4×10 → 5×8","Towel under toes. 3s up, 2s hold, 3s down. Every other day","_Rxtp-1JoM4","rathleff"]]}]},
+  {key:"d2", tab:"Day 2", title:"Upper: anti-tech-neck", sub:"", groups:[
+    {label:"Main", items:[
+      ["Bench or dumbbell press","3–4 × 6–8","","5Y3VZsLb1Ys","bench"],
+      ["Chest-supported row","4 × 8–10","Squeeze shoulder blades at the top","ro2vfHfD0DQ","csrow"],
+      ["Pull-ups or lat pulldown","3 × 6–10","","RTNmVfnRitA","pulldown"],
+      ["Face pulls","3 × 15","","ljgqer1ZpXg","facepull"],
+      ["Chin tucks","2 × 15","Hold 2s each","ekJzJTnd43s","chintuck"]]},
+    {label:"Aesthetics (~15 min)", note:"Rest 60–90s. Superset curls with triceps. Stop 1–2 reps short of failure. Weeks 1–2: 2 sets each. Short on time: drop arms first, keep lateral raises.", items:[
+      ["Lateral raises","3–4 × 12–15","","Y29xKcze8Ik","latraise"],
+      ["Chest fly machine","3 × 10–12","Second chest movement","hZ0CGRaKwbQ","pecdeck"],
+      ["Biceps curls","2–3 × 10–12","Superset with triceps","nBzLCE-dcRQ","curl"],
+      ["Triceps rope pushdown or overhead extension","2–3 × 10–12","Superset with curls","vPeQu_L-1n0","pushdown"]]}]},
+  {key:"d3", tab:"Day 3", title:"Norwegian 4x4 + core", sub:"Incline treadmill or hills are easier on the quads. Bike or rower on wrecked-leg weeks.", groups:[
+    {label:"Intervals", nolog:true, items:[
+      ["Easy warm-up","10 min","","IvMgI-Wog6I","jog"],
+      ["4x4 intervals","4 × 4 min","85–95% max HR, 3 min easy jog between. Log HR and pace per rep","IvMgI-Wog6I","run"],
+      ["Easy cool-down","5–10 min","","IvMgI-Wog6I","jog"]]},
+    {label:"After intervals", items:[
+      ["Rathleff heel raise","If on an every-other-day slot","Towel under toes. 3s up, 2s hold, 3s down","_Rxtp-1JoM4","rathleff"]]},
+    {label:"Core", items:[
+      ["Plank","3 × 30–45s","Squeeze glutes, ribs down","gSDNblPRh1U","plank"],
+      ["Sit-ups","2–3 × 12–15","Slow and controlled. Swap for crunches if your back flares","pCX65Mtc_Kk","situp"],
+      ["Side plank","2 × 30–45s/side","","0M-erHBl48U","sideplank"],
+      ["Dead bug","3 × 8/side","Low back stays pressed to the floor","-gRN_JyVTLY","deadbug"]]}]},
+  {key:"d4", tab:"Day 4", title:"Full body: hinge", sub:"Keep the 4x4 at least a day away from this session.", groups:[
+    {label:"Main", items:[
+      ["Trap bar or conventional deadlift","3–4 × 5","Build bracing before adding load","VdTwE_pOKrg","trapbar"],
+      ["Hip thrust","3 × 8–10","","jfZ2TwOSK9c","hipthrust"],
+      ["Leg press","3 × 10–12","Full range, don't lock out knees","P-FZknD_DxM","legpress"],
+      ["Overhead or incline press","3 × 8","","oZVCBM9f8Eo","incline"],
+      ["Single-arm row","3 × 10/side","","ZRSGpBUVcNw","onearm"],
+      ["Side-lying hip abduction (weighted)","2–3 × 8–10/side","Glute med","LDBzeT36xKo","abduct"],
+      ["Bent-knee heel raise (heavy)","3 × 8–12","Single-leg with a kettlebell, or seated calf machine. Pause top and bottom","M5zL9EEoNx8","soleus"],
+      ["Side plank","2 × max hold/side","","0M-erHBl48U","sideplank"]]},
+    {label:"Aesthetics (~15 min)", note:"Rest 60–90s. Superset curls with triceps. Stop 1–2 reps short of failure. Weeks 1–2: 2 sets each. Short on time: drop arms first, keep lateral raises.", items:[
+      ["Lateral raises","3–4 × 12–15","","Y29xKcze8Ik","latraise"],
+      ["Incline dumbbell curls","2–3 × 10–12","Superset with triceps","PAnypqTfEuU","inclinecurl"],
+      ["Overhead triceps extension","2–3 × 10–12","Superset with curls","xbNm9fRoUTw","ohext"]]}]},
+  {key:"mob", tab:"Daily", title:"Daily mobility", sub:"About 15 min. Short on time: butterfly, couch stretch, open books.", groups:[
+    {label:"Every day", nolog:true, items:[
+      ["Weighted butterfly","2–3 × 45–60s","Then 5–8 unweighted knee lifts. Back on wall, weights on mid thighs","yqgKuOnGE_4","butterfly"],
+      ["Couch stretch","30–45s/side","Squeeze the glute","wD_1Xv2xVEE","couch"],
+      ["Hamstring stretch (strap)","30–45s/side × 2","On your back, leg straight, pull gently with a strap","Il1L75v6gq0","hamstretch"],
+      ["Gastrocnemius stretch (straight knee)","30–45s/side × 2–3","","EFnLllHNbQQ","gastroc"],
+      ["Soleus stretch (bent knee)","30–45s/side × 2–3","","3FnsmjQ_Iyk","soleusStretch"],
+      ["Open books","8/side","","rDviWORCWEw","openbook"]]}]}
+];
+
+const store = {
+  get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+};
+let done = store.get("recomp-done",{});
+let bigId = null;
+let current = store.get("recomp-tab","d1");
+const fromHash = location.hash.slice(1);
+if (DAYS.some(d=>d.key===fromHash)) current = fromHash;
+if (!DAYS.some(d=>d.key===current)) current = "d1";
+
+const playIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5.5v13l11-6.5z"/></svg>';
+const tickIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+
+/* ---------- Weight log ---------- */
+const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+const drafts = {};
+let EX = store.get("recomp-exlog",{});
+let dbh = null, synced = false;
+const fmtDate = iso => { try{ return new Date(iso).toLocaleDateString(undefined,{month:"short",day:"numeric"}); }catch(e){ return ""; } };
+function lastOf(sl){ const h = EX[sl] && EX[sl].hist; return h && h.length ? h[0] : null; }
+function lastText(sl){
+  const l = lastOf(sl); if(!l) return "No log yet";
+  const w = l.w!=="" ? `${esc(String(l.w))} lb` : ""; const r = l.r!=="" ? `${esc(String(l.r))}` : "";
+  return `Last: <b>${[w,r].filter(Boolean).join(" × ")}</b> · ${fmtDate(l.at)}`;
+}
+function logRow(name){
+  const sl = slug(name), l = lastOf(sl);
+  return `<div class="log"><input id="w-${sl}" inputmode="decimal" maxlength="8" placeholder="${l&&l.w!==""?esc(String(l.w)):"wt"}" aria-label="Weight in pounds for ${esc(name)}"><span>lb ×</span><input id="r-${sl}" inputmode="numeric" maxlength="8" placeholder="${l&&l.r!==""?esc(String(l.r)):"reps"}" aria-label="Reps or seconds for ${esc(name)}"><button class="logbtn" data-s="${sl}" data-n="${esc(name)}">Log</button></div><p class="last" data-s="${sl}">${lastText(sl)}</p>`;
+}
+function syncNote(){ return synced ? "Logs sync to your account." : "Logs save in this browser."; }
+function refreshLast(){
+  document.querySelectorAll(".last").forEach(p => { p.innerHTML = lastText(p.dataset.s); });
+  document.querySelectorAll(".log input").forEach(i => {
+    const sl = i.id.slice(2), l = lastOf(sl); if(!l) return;
+    if(i.id.startsWith("w-")) i.placeholder = l.w!=="" ? String(l.w) : "wt"; else i.placeholder = l.r!=="" ? String(l.r) : "reps";
+  });
+  const s = document.getElementById("syncnote"); if(s) s.textContent = syncNote();
+}
+async function saveLog(b){
+  const sl = b.dataset.s, name = b.dataset.n, wi = document.getElementById("w-"+sl), ri = document.getElementById("r-"+sl);
+  const l = lastOf(sl);
+  const w = (wi.value.trim() || (l ? String(l.w) : "")).slice(0,8), r = (ri.value.trim() || (l ? String(l.r) : "")).slice(0,8);
+  if(!w && !r){ b.textContent = "Add wt or reps"; setTimeout(()=>b.textContent="Log",1500); return; }
+  const entry = { w, r, at: new Date().toISOString() };
+  const hist = [entry, ...((EX[sl] && EX[sl].hist) || [])].slice(0,300);
+  EX[sl] = { name, hist };
+  store.set("recomp-exlog", EX);
+  wi.value = ""; ri.value = ""; delete drafts[wi.id]; delete drafts[ri.id];
+  refreshLast();
+  b.textContent = "Saved";
+  if(dbh){ try{ await dbh.collection("exlog").doc(sl).set({ name, hist }); }catch(e){ b.textContent = "Saved here only"; } }
+  setTimeout(()=>b.textContent="Log",1500);
+}
+(async () => {
+  try{
+    if(!window.claude || !window.claude.use) return;
+    dbh = await window.claude.use("db"); if(!dbh) return;
+    dbh.collection("exlog").onSnapshot(snap => {
+      synced = true;
+      snap.docs.forEach(d => { const v = d.data(); if(v && Array.isArray(v.hist)) EX[d.id] = v; });
+      store.set("recomp-exlog", EX); refreshLast();
+    }, () => { synced = false; refreshLast(); });
+  }catch(e){ dbh = null; }
+})();
+
+function bkMsg(t){ const m=document.getElementById("bkmsg"); if(m) m.textContent=t; }
+async function backupLog(){
+  const n = Object.values(EX).reduce((a,v)=>a+((v&&v.hist)||[]).length,0);
+  if(!n){ bkMsg("Nothing logged yet."); return; }
+  const data = JSON.stringify({app:"recomp-workouts",version:1,exported:new Date().toISOString(),log:EX},null,1);
+  const filename = "recomp-log-" + new Date().toISOString().slice(0,10) + ".json";
+  let dl = null;
+  try{ if(window.claude && window.claude.use) dl = await window.claude.use("downloads"); }catch(e){ dl = null; }
+  if(dl){
+    try{ const r = await dl.save({filename, data}); bkMsg(r && r.status==="delivered" ? "Backup sent." : "Backup saved ("+n+" sets). Move it to Google Drive to keep it safe."); }
+    catch(e){ bkMsg(e && e.code==="unavailable" ? "Saving files isn't available here. Try the page in a browser." : "Backup not saved."); }
+    return;
+  }
+  try{
+    const url = URL.createObjectURL(new Blob([data],{type:"application/json"}));
+    const a = document.createElement("a"); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+    bkMsg("Backup saved ("+n+" sets). Move it to Google Drive to keep it safe.");
+  }catch(e){ bkMsg("Backup not saved."); }
+}
+async function restoreLog(file){
+  let obj;
+  try{ obj = JSON.parse(await file.text()); }catch(e){ bkMsg("That file isn't a log backup."); return; }
+  const log = obj && obj.app==="recomp-workouts" && obj.log;
+  if(!log || typeof log!=="object"){ bkMsg("That file isn't a log backup."); return; }
+  let added = 0; const changed = [];
+  for(const sl of Object.keys(log)){
+    const inc = log[sl]; if(!inc || !Array.isArray(inc.hist)) continue;
+    const cur = (EX[sl] && EX[sl].hist) || [];
+    const seen = new Set(cur.map(e=>e.at));
+    const fresh = inc.hist.filter(e => e && typeof e.at==="string" && !seen.has(e.at)).map(e => ({w:String(e.w??"").slice(0,8), r:String(e.r??"").slice(0,8), at:e.at}));
+    if(!fresh.length) continue;
+    added += fresh.length;
+    const hist = [...cur, ...fresh].sort((a,b)=> a.at<b.at?1:-1).slice(0,300);
+    EX[sl] = { name: (EX[sl]&&EX[sl].name) || String(inc.name||sl).slice(0,80), hist };
+    changed.push(sl);
+  }
+  store.set("recomp-exlog", EX); refreshLast();
+  if(dbh){ for(const sl of changed){ try{ await dbh.collection("exlog").doc(sl).set(EX[sl]); }catch(e){} } }
+  bkMsg(added ? "Restored "+added+" sets." : "Nothing new in that backup.");
+}
+
+function renderTabs(){
+  const t = document.getElementById("tabs");
+  t.innerHTML = DAYS.map(d => `<button role="tab" id="tab-${d.key}" aria-selected="${d.key===current}" data-k="${d.key}">${d.tab}</button>`).join("");
+  t.querySelectorAll("button").forEach(b => b.addEventListener("click", () => { current=b.dataset.k; bigId=null; store.set("recomp-tab",current); renderPage(); window.scrollTo({top:0}); }));
+}
+
+function renderPage(){
+  document.querySelectorAll(".log input").forEach(i=>{ if(i.value) drafts[i.id]=i.value; else delete drafts[i.id]; });
+  renderTabs();
+  const d = DAYS.find(x=>x.key===current);
+  const ids = [];
+  let html = "";
+  d.groups.forEach((g,gi) => {
+    html += `<div class="group">${esc(g.label)}</div>${g.note?`<p class="gnote">${esc(g.note)}</p>`:""}<ul class="list">`;
+    g.items.forEach(([name,dose,note,vid,ak],ii) => {
+      const id = `${d.key}-${gi}-${ii}`; ids.push(id);
+      const isDone = !!done[id];
+      html += `<li class="ex${isDone?" is-done":""}${bigId===id?" big":""}" data-id="${id}">
+        <button class="check" aria-pressed="${isDone}" aria-label="Mark ${esc(name)} done">${tickIcon}</button>
+        <div class="info"><p class="name">${esc(name)}</p><span class="dose">${esc(dose)}</span>${note?`<p class="note">${esc(note)}</p>`:""}${g.nolog?"":logRow(name)}<a class="vid" href="${YT(vid)}" target="_blank" rel="noopener">Full video</a></div>
+        ${GIF[ak]?`<button class="anim has-gif" data-g="${ak}" aria-label="${bigId===id?"Shrink":"Enlarge"} ${esc(name)} demo"><img src="${GIF[ak]}" loading="lazy" alt="${esc(name)} demo"></button>`:`<button class="anim" data-a="${ak}" aria-label="${bigId===id?"Shrink":"Enlarge"} ${esc(name)} demo"><svg viewBox="${A[ak].vb||"0 0 260 196"}" role="img" aria-label="${esc(name)} demo animation"></svg></button>`}
+      </li>`;
+    });
+    html += `</ul>`;
+  });
+  const n = ids.filter(i=>done[i]).length;
+  document.getElementById("day").innerHTML = `
+    <div class="dayhead"><h2>${esc(d.title)}</h2><span class="progress">${n} / ${ids.length} done</span></div>
+    ${d.sub?`<p class="sub">${esc(d.sub)}</p>`:""}
+    ${html}
+    <div class="foot"><p class="tip">Tap a demo to enlarge it. Tap the circle to check off an exercise. Log your top set with Log. <span id="syncnote">${syncNote()}</span></p><button class="reset" id="reset">Clear checks</button></div>
+    <div class="backup"><p class="tip">Back up your weight log to a file, then save it to Google Drive from your phone's share or save screen.</p><div class="bkbtns"><button class="reset" id="bk">Back up log</button><label class="reset" for="restore">Restore</label><input type="file" id="restore" accept=".json,application/json" hidden></div><p class="bkmsg" id="bkmsg" role="status"></p></div>`;
+  document.querySelectorAll(".check").forEach(b => b.addEventListener("click", () => {
+    const id = b.closest(".ex").dataset.id; done[id] = !done[id]; if(!done[id]) delete done[id];
+    store.set("recomp-done",done); renderPage();
+  }));
+  document.querySelectorAll("button.anim").forEach(b => b.addEventListener("click", () => {
+    const id = b.closest(".ex").dataset.id; bigId = bigId===id ? null : id; renderPage();
+  }));
+  document.querySelectorAll(".log input").forEach(i=>{ if(drafts[i.id]) i.value=drafts[i.id]; });
+  document.querySelectorAll(".logbtn").forEach(b => b.addEventListener("click", () => saveLog(b)));
+  tick(performance.now(), true);
+  document.getElementById("bk").addEventListener("click", backupLog);
+  document.getElementById("restore").addEventListener("change", e => { const f = e.target.files && e.target.files[0]; if(f) restoreLog(f); e.target.value = ""; });
+  document.getElementById("reset").addEventListener("click", () => { ids.forEach(i=>delete done[i]); store.set("recomp-done",done); renderPage(); });
+}
+renderPage();
+
+var lastT=0;
+function tick(now, force){
+  if(force || now-lastT>33){ lastT=now;
+    document.querySelectorAll("button.anim svg").forEach(svg=>{
+      const k=svg.parentNode.dataset.a; svg.innerHTML=render(A[k],poseAt(A[k],now));
+    });
+  }
+  if(!force) requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+</script>
+
+</body>
+</html>
