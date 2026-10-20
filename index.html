@@ -51,6 +51,9 @@ h2{font-family:var(--display);font-weight:700;font-size:1.35rem;text-transform:u
 .setrow{display:flex;align-items:center;gap:8px}
 .setn{width:46px;flex:none;font-size:.8rem;font-weight:600;color:var(--muted)}
 .setrow .x{flex:none;width:auto}
+.bdot{width:14px;height:14px;border-radius:50%;flex:none;border:1px solid var(--line)}
+.bandsel{flex:1;min-width:0;font:500 16px/1.2 var(--body);padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.bandsel:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .logfoot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:2px}
 .logfoot .last{margin:0}
 .log input{flex:1;width:auto;font:500 16px/1.2 var(--body);padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums;min-width:0}
@@ -453,7 +456,10 @@ const drafts = {};
 let EX = store.get("recomp-exlog",{});
 let dbh = null, synced = false;
 const fmtDate = iso => { try{ return new Date(iso).toLocaleDateString(undefined,{month:"short",day:"numeric"}); }catch(e){ return ""; } };
-const LOGTYPE = {"Rathleff heel raise":"r","Plank":"s","Side plank":"s","Sit-ups":"r","Dead bug":"r","Chin tucks":"r","Banded hip flexion":"r"};
+const LOGTYPE = {"Rathleff heel raise":"r","Plank":"s","Side plank":"s","Sit-ups":"r","Dead bug":"r","Chin tucks":"r","Banded hip flexion":"b"};
+const BANDS = [["Green","#2e9e6b"],["Yellow","#e2b423"],["Blue","#2f56b0"],["Red","#c8323e"],["Purple","#7a5bbd"]];
+const bandColor = n => (BANDS.find(b=>b[0]===n)||[0,"transparent"])[1];
+function updDot(sel){ const d = sel.previousElementSibling; if(d) d.style.background = bandColor(sel.value); };
 function nSets(dose){ const m = dose.match(/^(\d+)(?:\s*[–-]\s*(\d+))?\s*×/); return m ? Math.min(+(m[2]||m[1]),6) : 3; }
 function histOf(sl){ return (EX[sl] && EX[sl].hist) || []; }
 function setsOf(e){ return e ? (Array.isArray(e.sets) ? e.sets : [{w:e.w??"", r:e.r??""}]) : []; }
@@ -461,6 +467,7 @@ function lastOf(sl){ return histOf(sl)[0] || null; }
 function fmtSet(s,t){
   if(t==="s") return s.r ? s.r+"s" : "";
   if(t==="r") return s.r ? String(s.r) : "";
+  if(t==="b") return [s.w||"", s.r?String(s.r):""].filter(Boolean).join(" ×");
   return [s.w!==""&&s.w!=null ? String(s.w) : "", s.r ? String(s.r) : ""].filter(Boolean).join("×");
 }
 function lastText(sl,t){
@@ -474,6 +481,7 @@ function logRow(name,dose){
   for(let i=0;i<n;i++){
     const p = last[i] || {};
     rows += `<div class="setrow"><span class="setn">Set ${i+1}</span>` +
+      (t==="b" ? `<span class="bdot" style="background:${bandColor(p.w)}"></span><select id="w-${sl}-${i}" class="bandsel" aria-label="${esc(name)} set ${i+1} band"><option value="">Band</option>${BANDS.map(b=>`<option${b[0]===p.w?" selected":""}>${b[0]}</option>`).join("")}</select><span class="x">×</span>` : "") +
       (t==="wr" ? `<input id="w-${sl}-${i}" inputmode="decimal" maxlength="7" placeholder="${p.w?esc(String(p.w)):""}" aria-label="${esc(name)} set ${i+1} weight in pounds"><span class="x">lb ×</span>` : "") +
       `<input id="r-${sl}-${i}" inputmode="numeric" maxlength="5" placeholder="${p.r?esc(String(p.r)):""}" aria-label="${esc(name)} set ${i+1} ${t==="s"?"seconds":"reps"}">` +
       `<span class="x">${t==="s"?"sec":"reps"}</span></div>`;
@@ -484,6 +492,9 @@ function syncNote(){ return synced ? "Logs sync to your account." : "Logs save o
 function refreshLast(){
   document.querySelectorAll(".log").forEach(box => {
     const sl = box.dataset.s, t = box.dataset.t, last = setsOf(lastOf(sl));
+    box.querySelectorAll("select").forEach(sel => {
+      const i = +sel.id.split("-").pop(); if(!sel.value) sel.value = (last[i] && last[i].w) || ""; updDot(sel);
+    });
     box.querySelectorAll("input").forEach(inp => {
       const parts = inp.id.split("-"), k = parts[0], i = +parts[parts.length-1], p = last[i] || {};
       inp.placeholder = k==="w" ? (p.w ? String(p.w) : "") : (p.r ? String(p.r) : "");
@@ -496,7 +507,7 @@ async function saveLog(b){
   const sl = b.dataset.s, name = b.dataset.n, box = b.closest(".log"), t = box.dataset.t;
   const last = setsOf(lastOf(sl)), sets = []; let carry = "";
   box.querySelectorAll(".setrow").forEach((row,i) => {
-    const wi = row.querySelector('input[id^="w-"]'), ri = row.querySelector('input[id^="r-"]');
+    const wi = row.querySelector('[id^="w-"]'), ri = row.querySelector('input[id^="r-"]');
     const r = ri.value.trim().slice(0,5);
     let w = wi ? wi.value.trim().slice(0,7) : "";
     if(wi && w) carry = w;
@@ -509,7 +520,7 @@ async function saveLog(b){
   const hist = [entry, ...histOf(sl)].slice(0,200);
   EX[sl] = { name, hist };
   store.set("recomp-exlog", EX);
-  box.querySelectorAll("input").forEach(i => { i.value = ""; delete drafts[i.id]; });
+  box.querySelectorAll("input, select").forEach(i => { i.value = ""; delete drafts[i.id]; });
   refreshLast();
   b.textContent = "Saved " + sets.length + (sets.length===1 ? " set" : " sets");
   if(dbh){ try{ await dbh.collection("exlog").doc(sl).set({ name, hist }); }catch(e){ b.textContent = "Saved on this phone only"; } }
@@ -577,7 +588,7 @@ function renderTabs(){
 }
 
 function renderPage(){
-  document.querySelectorAll(".log input").forEach(i=>{ if(i.value) drafts[i.id]=i.value; else delete drafts[i.id]; });
+  document.querySelectorAll(".log input, .log select").forEach(i=>{ if(i.value) drafts[i.id]=i.value; else delete drafts[i.id]; });
   renderTabs();
   const d = DAYS.find(x=>x.key===current);
   const ids = [];
@@ -610,7 +621,8 @@ function renderPage(){
   document.querySelectorAll("button.anim").forEach(b => b.addEventListener("click", () => {
     const id = b.closest(".ex").dataset.id; bigId = bigId===id ? null : id; renderPage();
   }));
-  document.querySelectorAll(".log input").forEach(i=>{ if(drafts[i.id]) i.value=drafts[i.id]; });
+  document.querySelectorAll(".log input, .log select").forEach(i=>{ if(drafts[i.id]) i.value=drafts[i.id]; });
+  document.querySelectorAll(".bandsel").forEach(s => s.addEventListener("change", () => updDot(s)));
   document.querySelectorAll(".logbtn").forEach(b => b.addEventListener("click", () => saveLog(b)));
   tick(performance.now(), true);
   document.getElementById("bk").addEventListener("click", backupLog);
