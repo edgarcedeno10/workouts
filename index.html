@@ -394,9 +394,9 @@ const DAYS = [
       ["Rathleff heel raise","3 × 12 per leg","Bodyweight, one leg at a time, towel under toes. 3s up, 2s hold, 3s down. When all sets feel easy, add a 4th","_Rxtp-1JoM4","rathleff"]]}]},
   {key:"d2", tab:"Day 2", title:"Upper: anti-tech-neck", sub:"", groups:[
     {label:"Main", items:[
-      ["Bench or dumbbell press","3–4 × 6–8","","5Y3VZsLb1Ys","bench"],
+      ["Dumbbell press","3–4 × 6–8","","5Y3VZsLb1Ys","bench"],
       ["Chest-supported row","4 × 8–10","Squeeze shoulder blades at the top","ro2vfHfD0DQ","csrow"],
-      ["Pull-ups or lat pulldown","3 × 6–10","","RTNmVfnRitA","pulldown"],
+      ["Lat pulldown","3 × 6–10","","RTNmVfnRitA","pulldown"],
       ["Face pulls","3 × 15","","ljgqer1ZpXg","facepull"],
       ["Chin tucks","2 × 15","Hold 2s each","ekJzJTnd43s","chintuck"],
       ["Lateral raises","3–4 × 12–15","","Y29xKcze8Ik","latraise"],
@@ -458,6 +458,9 @@ const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'
 const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 const drafts = {};
 let EX = store.get("recomp-exlog",{});
+const RENAMED = [["bench-or-dumbbell-press","dumbbell-press","Dumbbell press"],["pull-ups-or-lat-pulldown","lat-pulldown","Lat pulldown"]];
+function migrateNames(){ RENAMED.forEach(([o,n,nm]) => { if(EX[o] && !EX[n]) EX[n] = { name: nm, hist: EX[o].hist }; }); }
+migrateNames();
 let dbh = null, synced = false;
 const fmtDate = iso => { try{ return new Date(iso).toLocaleDateString(undefined,{month:"short",day:"numeric"}); }catch(e){ return ""; } };
 const LOGTYPE = {"Rathleff heel raise":"r","Plank":"s","Side plank":"s","Sit-ups":"r","Dead bug":"r","Chin tucks":"r","Banded hip flexion":"b"};
@@ -537,7 +540,7 @@ async function saveLog(b){
     dbh = await window.claude.use("db"); if(!dbh) return;
     dbh.collection("exlog").onSnapshot(snap => {
       synced = true;
-      snap.docs.forEach(d => { const v = d.data(); if(v && Array.isArray(v.hist)) EX[d.id] = v; });
+      snap.docs.forEach(d => { const v = d.data(); if(v && Array.isArray(v.hist)) EX[d.id] = v; }); migrateNames();
       store.set("recomp-exlog", EX); refreshLast();
     }, () => { synced = false; refreshLast(); });
   }catch(e){ dbh = null; }
