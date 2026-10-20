@@ -47,8 +47,13 @@ h1{font-family:var(--display);font-weight:700;font-size:1.6rem;letter-spacing:.0
 h2{font-family:var(--display);font-weight:700;font-size:1.35rem;text-transform:uppercase;letter-spacing:.02em;margin:0;text-wrap:balance}
 .progress{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
 .sub{color:var(--muted);font-size:.9rem;margin:0 0 10px}
-.log{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}
-.log input{width:58px;font:500 16px/1.2 var(--body);padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums;min-width:0}
+.log{grid-column:1 / -1;display:flex;flex-direction:column;gap:6px;padding-top:10px;border-top:1px solid var(--line)}
+.setrow{display:flex;align-items:center;gap:8px}
+.setn{width:46px;flex:none;font-size:.8rem;font-weight:600;color:var(--muted)}
+.setrow .x{flex:none;width:auto}
+.logfoot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:2px}
+.logfoot .last{margin:0}
+.log input{flex:1;width:auto;font:500 16px/1.2 var(--body);padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums;min-width:0}
 .log input::placeholder{color:var(--muted)}
 .log span{color:var(--muted);font-size:.85rem}
 .logbtn{font:600 .85rem/1 var(--body);background:var(--ink);color:var(--surface);border:0;border-radius:6px;padding:9px 12px;cursor:pointer}
@@ -377,7 +382,7 @@ const DAYS = [
       ["Seated hamstring curl (machine)","3 × 8–12","Slow 3s lowering. Lying leg curl if no seated machine","92MK-Qx3TiM","legcurl"],
       ["Banded hip flexion","2–3 × 8–10/side","Low back stays flat on the floor","_yePkAW1beU","hipflex"],
       ["Cable/banded hip adduction","2–3 × 8–10/side","Drop this first if short on time","SIQrpq6YnT8","adduct"],
-      ["Rathleff heel raise","3×12 → 4×10 → 5×8","Towel under toes. 3s up, 2s hold, 3s down. Every other day","_Rxtp-1JoM4","rathleff"]]}]},
+      ["Rathleff heel raise","3 × 12 per leg","Bodyweight, one leg at a time, towel under toes. 3s up, 2s hold, 3s down. When all sets feel easy, add a 4th","_Rxtp-1JoM4","rathleff"]]}]},
   {key:"d2", tab:"Day 2", title:"Upper: anti-tech-neck", sub:"", groups:[
     {label:"Main", items:[
       ["Bench or dumbbell press","3–4 × 6–8","","5Y3VZsLb1Ys","bench"],
@@ -396,7 +401,7 @@ const DAYS = [
       ["4x4 intervals","4 × 4 min","85–95% max HR, 3 min easy jog between. Log HR and pace per rep","IvMgI-Wog6I","run"],
       ["Easy cool-down","5–10 min","","IvMgI-Wog6I","jog"]]},
     {label:"After intervals", items:[
-      ["Rathleff heel raise","If on an every-other-day slot","Towel under toes. 3s up, 2s hold, 3s down","_Rxtp-1JoM4","rathleff"]]},
+      ["Rathleff heel raise","3 × 12 per leg","Same as Day 1. Bodyweight, towel under toes","_Rxtp-1JoM4","rathleff"]]},
     {label:"Core", items:[
       ["Plank","3 × 30–45s","Squeeze glutes, ribs down","gSDNblPRh1U","plank"],
       ["Sit-ups","2–3 × 12–15","Slow and controlled. Swap for crunches if your back flares","pCX65Mtc_Kk","situp"],
@@ -448,40 +453,69 @@ const drafts = {};
 let EX = store.get("recomp-exlog",{});
 let dbh = null, synced = false;
 const fmtDate = iso => { try{ return new Date(iso).toLocaleDateString(undefined,{month:"short",day:"numeric"}); }catch(e){ return ""; } };
-function lastOf(sl){ const h = EX[sl] && EX[sl].hist; return h && h.length ? h[0] : null; }
-function lastText(sl){
-  const l = lastOf(sl); if(!l) return "No log yet";
-  const w = l.w!=="" ? `${esc(String(l.w))} lb` : ""; const r = l.r!=="" ? `${esc(String(l.r))}` : "";
-  return `Last: <b>${[w,r].filter(Boolean).join(" × ")}</b> · ${fmtDate(l.at)}`;
+const LOGTYPE = {"Rathleff heel raise":"r","Plank":"s","Side plank":"s","Sit-ups":"r","Dead bug":"r","Chin tucks":"r","Banded hip flexion":"r"};
+function nSets(dose){ const m = dose.match(/^(\d+)(?:\s*[–-]\s*(\d+))?\s*×/); return m ? Math.min(+(m[2]||m[1]),6) : 3; }
+function histOf(sl){ return (EX[sl] && EX[sl].hist) || []; }
+function setsOf(e){ return e ? (Array.isArray(e.sets) ? e.sets : [{w:e.w??"", r:e.r??""}]) : []; }
+function lastOf(sl){ return histOf(sl)[0] || null; }
+function fmtSet(s,t){
+  if(t==="s") return s.r ? s.r+"s" : "";
+  if(t==="r") return s.r ? String(s.r) : "";
+  return [s.w!==""&&s.w!=null ? String(s.w) : "", s.r ? String(s.r) : ""].filter(Boolean).join("×");
 }
-function logRow(name){
-  const sl = slug(name), l = lastOf(sl);
-  return `<div class="log"><input id="w-${sl}" inputmode="decimal" maxlength="8" placeholder="${l&&l.w!==""?esc(String(l.w)):"wt"}" aria-label="Weight in pounds for ${esc(name)}"><span>lb ×</span><input id="r-${sl}" inputmode="numeric" maxlength="8" placeholder="${l&&l.r!==""?esc(String(l.r)):"reps"}" aria-label="Reps or seconds for ${esc(name)}"><button class="logbtn" data-s="${sl}" data-n="${esc(name)}">Log</button></div><p class="last" data-s="${sl}">${lastText(sl)}</p>`;
+function lastText(sl,t){
+  const e = lastOf(sl); if(!e) return "No log yet";
+  const ss = setsOf(e).map(s=>fmtSet(s,t||"wr")).filter(Boolean);
+  return `Last time (${fmtDate(e.at)}): <b>${esc(ss.join(", "))}</b>`;
 }
-function syncNote(){ return synced ? "Logs sync to your account." : "Logs save in this browser."; }
+function logRow(name,dose){
+  const sl = slug(name), t = LOGTYPE[name] || "wr", n = nSets(dose), last = setsOf(lastOf(sl));
+  let rows = "";
+  for(let i=0;i<n;i++){
+    const p = last[i] || {};
+    rows += `<div class="setrow"><span class="setn">Set ${i+1}</span>` +
+      (t==="wr" ? `<input id="w-${sl}-${i}" inputmode="decimal" maxlength="7" placeholder="${p.w?esc(String(p.w)):""}" aria-label="${esc(name)} set ${i+1} weight in pounds"><span class="x">lb ×</span>` : "") +
+      `<input id="r-${sl}-${i}" inputmode="numeric" maxlength="5" placeholder="${p.r?esc(String(p.r)):""}" aria-label="${esc(name)} set ${i+1} ${t==="s"?"seconds":"reps"}">` +
+      `<span class="x">${t==="s"?"sec":"reps"}</span></div>`;
+  }
+  return `<div class="log" data-s="${sl}" data-t="${t}">${rows}<div class="logfoot"><button class="logbtn" data-s="${sl}" data-n="${esc(name)}">Save sets</button><p class="last">${lastText(sl,t)}</p></div></div>`;
+}
+function syncNote(){ return synced ? "Logs sync to your account." : "Logs save on this phone."; }
 function refreshLast(){
-  document.querySelectorAll(".last").forEach(p => { p.innerHTML = lastText(p.dataset.s); });
-  document.querySelectorAll(".log input").forEach(i => {
-    const sl = i.id.slice(2), l = lastOf(sl); if(!l) return;
-    if(i.id.startsWith("w-")) i.placeholder = l.w!=="" ? String(l.w) : "wt"; else i.placeholder = l.r!=="" ? String(l.r) : "reps";
+  document.querySelectorAll(".log").forEach(box => {
+    const sl = box.dataset.s, t = box.dataset.t, last = setsOf(lastOf(sl));
+    box.querySelectorAll("input").forEach(inp => {
+      const parts = inp.id.split("-"), k = parts[0], i = +parts[parts.length-1], p = last[i] || {};
+      inp.placeholder = k==="w" ? (p.w ? String(p.w) : "") : (p.r ? String(p.r) : "");
+    });
+    const l = box.querySelector(".last"); if(l) l.innerHTML = lastText(sl,t);
   });
   const s = document.getElementById("syncnote"); if(s) s.textContent = syncNote();
 }
 async function saveLog(b){
-  const sl = b.dataset.s, name = b.dataset.n, wi = document.getElementById("w-"+sl), ri = document.getElementById("r-"+sl);
-  const l = lastOf(sl);
-  const w = (wi.value.trim() || (l ? String(l.w) : "")).slice(0,8), r = (ri.value.trim() || (l ? String(l.r) : "")).slice(0,8);
-  if(!w && !r){ b.textContent = "Add wt or reps"; setTimeout(()=>b.textContent="Log",1500); return; }
-  const entry = { w, r, at: new Date().toISOString() };
-  const hist = [entry, ...((EX[sl] && EX[sl].hist) || [])].slice(0,300);
+  const sl = b.dataset.s, name = b.dataset.n, box = b.closest(".log"), t = box.dataset.t;
+  const last = setsOf(lastOf(sl)), sets = []; let carry = "";
+  box.querySelectorAll(".setrow").forEach((row,i) => {
+    const wi = row.querySelector('input[id^="w-"]'), ri = row.querySelector('input[id^="r-"]');
+    const r = ri.value.trim().slice(0,5);
+    let w = wi ? wi.value.trim().slice(0,7) : "";
+    if(wi && w) carry = w;
+    if(!r) return;
+    if(wi && !w) w = carry || ((last[i] && last[i].w) ? String(last[i].w) : "");
+    sets.push({ w, r });
+  });
+  if(!sets.length){ b.textContent = t==="s" ? "Enter seconds" : "Enter reps"; setTimeout(()=>b.textContent="Save sets",1500); return; }
+  const entry = { at: new Date().toISOString(), sets };
+  const hist = [entry, ...histOf(sl)].slice(0,200);
   EX[sl] = { name, hist };
   store.set("recomp-exlog", EX);
-  wi.value = ""; ri.value = ""; delete drafts[wi.id]; delete drafts[ri.id];
+  box.querySelectorAll("input").forEach(i => { i.value = ""; delete drafts[i.id]; });
   refreshLast();
-  b.textContent = "Saved";
-  if(dbh){ try{ await dbh.collection("exlog").doc(sl).set({ name, hist }); }catch(e){ b.textContent = "Saved here only"; } }
-  setTimeout(()=>b.textContent="Log",1500);
+  b.textContent = "Saved " + sets.length + (sets.length===1 ? " set" : " sets");
+  if(dbh){ try{ await dbh.collection("exlog").doc(sl).set({ name, hist }); }catch(e){ b.textContent = "Saved on this phone only"; } }
+  setTimeout(()=>b.textContent="Save sets",1800);
 }
+
 (async () => {
   try{
     if(!window.claude || !window.claude.use) return;
@@ -503,7 +537,7 @@ async function backupLog(){
   let dl = null;
   try{ if(window.claude && window.claude.use) dl = await window.claude.use("downloads"); }catch(e){ dl = null; }
   if(dl){
-    try{ const r = await dl.save({filename, data}); bkMsg(r && r.status==="delivered" ? "Backup sent." : "Backup saved ("+n+" sets). Move it to Google Drive to keep it safe."); }
+    try{ const r = await dl.save({filename, data}); bkMsg(r && r.status==="delivered" ? "Backup sent." : "Backup saved ("+n+" workouts logged). Move it to Google Drive or iCloud to keep it safe."); }
     catch(e){ bkMsg(e && e.code==="unavailable" ? "Saving files isn't available here. Try the page in a browser." : "Backup not saved."); }
     return;
   }
@@ -511,7 +545,7 @@ async function backupLog(){
     const url = URL.createObjectURL(new Blob([data],{type:"application/json"}));
     const a = document.createElement("a"); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),4000);
-    bkMsg("Backup saved ("+n+" sets). Move it to Google Drive to keep it safe.");
+    bkMsg("Backup saved ("+n+" workouts logged). Move it to Google Drive or iCloud to keep it safe.");
   }catch(e){ bkMsg("Backup not saved."); }
 }
 async function restoreLog(file){
@@ -524,7 +558,7 @@ async function restoreLog(file){
     const inc = log[sl]; if(!inc || !Array.isArray(inc.hist)) continue;
     const cur = (EX[sl] && EX[sl].hist) || [];
     const seen = new Set(cur.map(e=>e.at));
-    const fresh = inc.hist.filter(e => e && typeof e.at==="string" && !seen.has(e.at)).map(e => ({w:String(e.w??"").slice(0,8), r:String(e.r??"").slice(0,8), at:e.at}));
+    const fresh = inc.hist.filter(e => e && typeof e.at==="string" && !seen.has(e.at)).map(e => ({at:e.at, sets:(Array.isArray(e.sets)?e.sets:[{w:e.w,r:e.r}]).slice(0,8).map(s=>({w:String((s&&s.w)??"").slice(0,7), r:String((s&&s.r)??"").slice(0,5)}))}));
     if(!fresh.length) continue;
     added += fresh.length;
     const hist = [...cur, ...fresh].sort((a,b)=> a.at<b.at?1:-1).slice(0,300);
@@ -533,7 +567,7 @@ async function restoreLog(file){
   }
   store.set("recomp-exlog", EX); refreshLast();
   if(dbh){ for(const sl of changed){ try{ await dbh.collection("exlog").doc(sl).set(EX[sl]); }catch(e){} } }
-  bkMsg(added ? "Restored "+added+" sets." : "Nothing new in that backup.");
+  bkMsg(added ? "Restored "+added+" logged workouts." : "Nothing new in that backup.");
 }
 
 function renderTabs(){
@@ -555,8 +589,9 @@ function renderPage(){
       const isDone = !!done[id];
       html += `<li class="ex${isDone?" is-done":""}${bigId===id?" big":""}" data-id="${id}">
         <button class="check" aria-pressed="${isDone}" aria-label="Mark ${esc(name)} done">${tickIcon}</button>
-        <div class="info"><p class="name">${esc(name)}</p><span class="dose">${esc(dose)}</span>${note?`<p class="note">${esc(note)}</p>`:""}${g.nolog?"":logRow(name)}<a class="vid" href="${YT(vid)}" target="_blank" rel="noopener">Full video</a></div>
+        <div class="info"><p class="name">${esc(name)}</p><span class="dose">${esc(dose)}</span>${note?`<p class="note">${esc(note)}</p>`:""}<a class="vid" href="${YT(vid)}" target="_blank" rel="noopener">Full video</a></div>
         ${GIF[ak]?`<button class="anim has-gif" data-g="${ak}" aria-label="${bigId===id?"Shrink":"Enlarge"} ${esc(name)} demo"><img src="${GIF[ak]}" loading="lazy" alt="${esc(name)} demo"></button>`:`<button class="anim" data-a="${ak}" aria-label="${bigId===id?"Shrink":"Enlarge"} ${esc(name)} demo"><svg viewBox="${A[ak].vb||"0 0 260 196"}" role="img" aria-label="${esc(name)} demo animation"></svg></button>`}
+        ${g.nolog?"":logRow(name,dose)}
       </li>`;
     });
     html += `</ul>`;
@@ -566,7 +601,7 @@ function renderPage(){
     <div class="dayhead"><h2>${esc(d.title)}</h2><span class="progress">${n} / ${ids.length} done</span></div>
     ${d.sub?`<p class="sub">${esc(d.sub)}</p>`:""}
     ${html}
-    <div class="foot"><p class="tip">Tap a demo to enlarge it. Tap the circle to check off an exercise. Log your top set with Log. <span id="syncnote">${syncNote()}</span></p><button class="reset" id="reset">Clear checks</button></div>
+    <div class="foot"><p class="tip">Tap a demo to enlarge it. Tap the circle to check off an exercise. Grey numbers are last time. Type the weight once and it carries to the next sets. <span id="syncnote">${syncNote()}</span></p><button class="reset" id="reset">Clear checks</button></div>
     <div class="backup"><p class="tip">Back up your weight log to a file, then save it to Google Drive from your phone's share or save screen.</p><div class="bkbtns"><button class="reset" id="bk">Back up log</button><label class="reset" for="restore">Restore</label><input type="file" id="restore" accept=".json,application/json" hidden></div><p class="bkmsg" id="bkmsg" role="status"></p></div>`;
   document.querySelectorAll(".check").forEach(b => b.addEventListener("click", () => {
     const id = b.closest(".ex").dataset.id; done[id] = !done[id]; if(!done[id]) delete done[id];
